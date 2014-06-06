@@ -1,0 +1,18 @@
+Project: SF Movies
+Technical Track: Full Stack
+
+Technical Track Reasons:
+At my current job I do a mix of both frontend and backend work.
+So for the backend, I created a class which reads data from a MongoDB to serve to the frontend.
+To load data into the database, there is a nightly cronjob, which runs code to pull data from the datasf api (movie data), google places api (get lat/long coords),google geolocation api ( to get neighborhood), and the trailer addict api to get movie trailers. The data is aggregated and stored into the the database, with  unique key of the md5 hash of the concatination of the movie title and shot location, so that we prevent duplicates from being written to the db during updates.
+
+In the frontend, I'm using jquery(mostly for autocomplete and ajax requests)  and google maps api. its a pretty simple ui, the background is the map of sf with markers of all the movies filmed in sf in them. There is an input field where the user can filter the markers by either movie title, release year, actors, or neighborhood the movie was shot in. When a user clicks a marker, a popup comes up with some data about the movie, and if there was a trailer available, a movie trailer.
+
+I also have a middle lair of a memcache server running inbetween the frontend and backend to speed up any concurrent requests.
+
+If I had some more time I would have done the following:
+- Mobile Version
+- IE support
+- Create a more visually pleasent popup for when user view data about a movie.
+- UI Test Suite
+
