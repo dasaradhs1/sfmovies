@@ -1,0 +1,204 @@
+<html>
+  <head>
+    <title>Movies Made in SF</title>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+<link rel="stylesheet" href="//code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.css">
+  <script src="//code.jquery.com/jquery-1.10.2.js"></script>
+  <script src="//code.jquery.com/ui/1.10.4/jquery-ui.js"></script>
+    <style>
+      #map-canvas {
+        height: 100%;
+      	}
+      #topBar {
+        float: right;
+        background-color: #FFFFF7;border: 1px solid #999999;
+ 	}
+  .ui-autocomplete {
+    max-height: 400px;
+    overflow-y: auto;
+    /* prevent horizontal scrollbar */
+    overflow-x: hidden;
+    font-size: 1em;
+  }
+    </style>
+    <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false"></script>
+    <script>
+
+var map;
+var tags;
+var places;
+var markers=[];
+var infowindow = null;
+function initialize() {
+$( "#dialog" ).dialog({
+autoOpen:false});
+	var mapOptions = {
+    		zoom: 13,
+    		center: new google.maps.LatLng(37.7820,-122.4167),
+    		noClear: true,
+    		mapTypeId: google.maps.MapTypeId.HYBRID
+  	};
+  	map = new google.maps.Map(document.getElementById('map-canvas'),mapOptions);
+	var titleDiv = document.createElement('div');
+	var titlePanel = new createControlPanel(titleDiv, 0);
+	map.controls[google.maps.ControlPosition.TOP].push(titleDiv);
+
+
+	var inputDiv = document.createElement('div');
+	var cp = new createControlPanel(inputDiv, 1);
+	map.controls[google.maps.ControlPosition.TOP_RIGHT].push(inputDiv);
+	var helpDiv = document.createElement('div');
+	var cp1 = new createControlPanel(helpDiv, 2);
+	map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(helpDiv);
+
+	//get autocomplete data
+	$.ajax({ url: 'SfMovies.php',
+        	type: "POST",
+		data: "var=1",
+        	success: function(t) {
+			tags=t;
+        	}
+    	});
+
+	//get data for map
+	$.ajax({ url: 'SfMovies.php',
+        	type: "POST",
+		data: "var=2",
+        	success: function(t) {
+			places=t;
+			var arr = $.parseJSON(places);
+			console.log(arr.length);
+			infowindow = new google.maps.InfoWindow({
+			content: "holding..."
+			});
+			createMarkers(arr)
+		
+    		}
+	});
+}
+
+function createControlPanel (controlPanelDiv,a){
+	switch (a) {
+		case 0:
+   			//Map title
+   			titleBar = document.createElement('div');
+ 			titleBar.innerHTML = '<div align="center" style="font-size:50;font-family:Trebuchet MS,American Typewriter,Times New Roman;color:#F2F2F2" >Movies Made in San Francisco</div>';
+   			controlPanelDiv.appendChild(titleBar);
+			break;
+
+		case 1:
+			// input for filter
+			titleBar = document.createElement('div');
+			titleBar.innerHTML = '<div  style="font-size:20;padding-top:1em;"  ><input name="auto" id="auto" placeholder="Map Filter" type="text" style="height:3em;width:17em" onkeyup="testFunc(event,this)"></div>';
+   			controlPanelDiv.appendChild(titleBar);
+			break;
+		case 2:
+			// input for filter
+			titleBar = document.createElement('div');
+			titleBar.innerHTML = '<div  style="font-size:20;color:#F2F2F2;padding-right:1em;cursor:pointer;" onclick="helpFunc()">Help</div>';
+   			controlPanelDiv.appendChild(titleBar);
+			break;
+	}
+	
+
+}
+
+function testFunc(e,t){
+	if(e.keyCode == 8 && $(t).val().length ==0 ) { 
+		$.ajax({ url: 'SfMovies.php',
+        		type: "POST",
+			data: "var=2",
+        		success: function(t) {
+				places=t;
+				clearMarkers()
+				var arr = $.parseJSON(places);
+				console.log(arr.length);
+				infowindow = new google.maps.InfoWindow({
+				content: "holding..."
+				});
+				createMarkers(arr)
+		
+    			}
+		});
+
+
+
+	} else {
+		$(document).ready(function(){
+            		var a =$("#auto");
+            		a.autocomplete({
+                		source: tags,
+				autoFocus: true,
+				select: function( event, ui ) { 
+            				var selectedObj = ui.item; 
+					console.log(selectedObj.value);
+					$.ajax({ url: 'SfMovies.php',
+        					type: "POST",
+						data: "var=3&param="+selectedObj.value,
+        					success: function(ut) {
+							places=ut;
+							var arr = $.parseJSON(places);
+							console.log(arr);
+							clearMarkers()
+							infowindow = new google.maps.InfoWindow({
+								content: "holding..."
+							});
+							createMarkers(arr)
+		
+    						}
+					});
+        			}
+            		});
+		});
+}
+}
+function createMarkers(arr) {
+
+	for (var i=0, len=arr.length; i < len; i++) { 
+		if(arr[i]['loc'] == null) {
+			continue;
+		}
+		var loc = new google.maps.LatLng(arr[i]['loc']['lat'],arr[i]['loc']['lng']); 
+		var marker = new google.maps.Marker({ 
+		position: loc, 
+		map: map,
+		html: '<h1>'+arr[i]['title']+'</h1> <div>Release Year:'+arr[i]['year']+'</div> <div>Writer:'+arr[i]['writer']+'</div><div> Actors:'+arr[i]['actors'].toString()+'</div><div> Location:'+arr[i]['location']+'</div>'+arr[i]['video']
+
+		}); 
+		google.maps.event.addListener(marker, 'click', function () {
+		infowindow.setContent(this.html);
+		infowindow.open(map, this);
+		});
+		markers.push(marker); 
+	} 
+	for (var j = 0; j < markers.length; j++) { 
+		markers[j].setMap(map); 
+	} 
+
+}
+
+function clearMarkers() {
+	for (var i = 0; i < markers.length; i++) {
+    		markers[i].setMap(null);
+  	}
+	markers=[];
+
+}
+function helpFunc() {
+$( "#dialog" ).dialog( "open" );	
+}
+//run initialize function on load
+google.maps.event.addDomListener(window, 'load', initialize);
+    </script>
+  </head>
+  <body>
+  	<div id="map-canvas">
+	<div id="dtest"></div>
+<div id="dialog" title="Help">
+<p>Welcome to a map of movies made in San Francisco,CA. Each marker represents a movie, and you can click the marker to get some information about the movie, and if you're lucky, maybe a movie trailer :) . Using the "Map Filter" input box, you can filter the movie markers by movie title,actors,release year, or neighborhoods. Once you're done filtering and you want to see all the map unfiltered, just delete the contents of the search box. Enjoy!</p>
+</div>
+
+	</div>
+  </body>
+</html>
